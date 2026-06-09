@@ -48,7 +48,7 @@ export async function scoreSubmission(call, feedback) {
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    system: [{ type: 'text', text: 'You are evaluating whether a sales manager actually listened to a call recording. Score their feedback. Return only valid JSON.' }],
+    system: [{ type: 'text', text: 'You are evaluating whether a sales team employee (менеджер/сотрудник) actually listened to a call recording made by a top performer. The EMPLOYEE is being tested — they listened to the call and wrote feedback. Score their feedback. In the "reasoning" field write in Russian and always refer to the person being evaluated as "менеджер" or "сотрудник". Never call them "руководитель". Return only valid JSON.' }],
     messages: [
       {
         role: 'user',
