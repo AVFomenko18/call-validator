@@ -6,7 +6,7 @@ export async function extractKeyMoments(transcription) {
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    system: 'You are an expert sales coach analyzing call transcriptions. Return only valid JSON.',
+    system: [{ type: 'text', text: 'You are an expert sales coach analyzing call transcriptions. Return only valid JSON.' }],
     messages: [
       {
         role: 'user',
@@ -48,7 +48,7 @@ export async function scoreSubmission(call, feedback) {
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    system: 'You are evaluating whether a sales manager actually listened to a call recording. Score their feedback. Return only valid JSON.',
+    system: [{ type: 'text', text: 'You are evaluating whether a sales manager actually listened to a call recording. Score their feedback. Return only valid JSON.' }],
     messages: [
       {
         role: 'user',
