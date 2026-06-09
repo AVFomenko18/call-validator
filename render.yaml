@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: call-validator
+    runtime: node
+    buildCommand: npm install && npm run build && cd .. && npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: call-validator-db
+          property: connectionString
+
+databases:
+  - name: call-validator-db
+    plan: free
