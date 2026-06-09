@@ -10,6 +10,7 @@ function AudioPlayer({ url }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [resolvedUrl, setResolvedUrl] = useState(null);
   const [resolving, setResolving] = useState(false);
+  const [audioError, setAudioError] = useState('');
 
   const isGoogleDrive = url && (url.includes('drive.google.') || url.includes('docs.google.'));
   const isYandex = url && (url.includes('yandex.') || url.includes('yadi.sk'));
@@ -20,8 +21,11 @@ function AudioPlayer({ url }) {
       setResolving(true);
       fetch(`/api/resolve-audio?url=${encodeURIComponent(url)}`)
         .then((r) => r.json())
-        .then((d) => setResolvedUrl(d.url || url))
-        .catch(() => setResolvedUrl(url))
+        .then((d) => {
+          if (d.url) setResolvedUrl(d.url);
+          else setAudioError(d.error || 'Не удалось загрузить аудио');
+        })
+        .catch((e) => setAudioError(e.message))
         .finally(() => setResolving(false));
     } else {
       setResolvedUrl(url);
@@ -49,6 +53,7 @@ function AudioPlayer({ url }) {
   }
 
   if (resolving) return <p className="text-sm text-slate-400">Загрузка аудио...</p>;
+  if (audioError) return <p className="text-sm text-red-500">{audioError}</p>;
   if (!resolvedUrl) return null;
 
   function fmt(s) {

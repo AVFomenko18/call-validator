@@ -33,13 +33,16 @@ app.get('/api/resolve-audio', async (req, res) => {
   try {
     if (url.includes('yandex.') || url.includes('yadi.sk')) {
       const apiUrl = `https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=${encodeURIComponent(url)}`;
+      console.log('[resolve-audio] Calling Yandex API:', apiUrl);
       const r = await fetch(apiUrl);
       const data = await r.json();
+      console.log('[resolve-audio] Yandex API response:', JSON.stringify(data));
       if (data.href) return res.json({ url: data.href });
-      return res.status(400).json({ error: 'Cannot resolve Yandex Disk link' });
+      return res.status(400).json({ error: data.message || 'Cannot resolve Yandex Disk link', raw: data });
     }
     res.json({ url });
   } catch (err) {
+    console.error('[resolve-audio] Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

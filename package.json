@@ -10,6 +10,9 @@
     "build": "cd client && npm ci --include=dev && npm run build",
     "start": "node server/index.js"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
     "cors": "^2.8.5",
