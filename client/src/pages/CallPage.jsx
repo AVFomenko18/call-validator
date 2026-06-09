@@ -1,5 +1,117 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+
+function AudioPlayer({ url }) {
+  const audioRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+
+  const driveMatch = url.match(/\/file\/d\/([^/?]+)/) || url.match(/[?&]id=([^&]+)/);
+
+  if (driveMatch) {
+    const driveId = driveMatch[1];
+    return (
+      <div>
+        <iframe
+          src={`https://drive.google.com/file/d/${driveId}/preview`}
+          width="100%"
+          height="120"
+          allow="autoplay"
+          className="rounded-lg border-0 block"
+        />
+        <a
+          href={`https://drive.google.com/file/d/${driveId}/view`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600"
+        >
+          Открыть в Google Drive (там можно менять скорость) ↗
+        </a>
+      </div>
+    );
+  }
+
+  function fmt(s) {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${String(sec).padStart(2, '0')}`;
+  }
+
+  function togglePlay() {
+    const a = audioRef.current;
+    if (!a) return;
+    if (playing) { a.pause(); setPlaying(false); }
+    else { a.play(); setPlaying(true); }
+  }
+
+  function changeSpeed(s) {
+    setSpeed(s);
+    if (audioRef.current) audioRef.current.playbackRate = s;
+  }
+
+  function onTimeUpdate() {
+    const a = audioRef.current;
+    if (!a) return;
+    setCurrentTime(a.currentTime);
+    setProgress(a.duration ? (a.currentTime / a.duration) * 100 : 0);
+  }
+
+  function onSeek(e) {
+    const a = audioRef.current;
+    if (!a || !a.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    a.currentTime = ratio * a.duration;
+  }
+
+  return (
+    <div className="space-y-3">
+      <audio
+        ref={audioRef}
+        src={url}
+        onTimeUpdate={onTimeUpdate}
+        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+        onEnded={() => setPlaying(false)}
+      />
+      {/* Progress bar */}
+      <div
+        className="w-full h-2 bg-slate-200 rounded-full cursor-pointer"
+        onClick={onSeek}
+      >
+        <div className="h-2 bg-blue-600 rounded-full transition-all" style={{ width: `${progress}%` }} />
+      </div>
+      {/* Controls */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={togglePlay}
+            className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 text-lg"
+          >
+            {playing ? '⏸' : '▶'}
+          </button>
+          <span className="text-sm text-slate-500 tabular-nums">
+            {fmt(currentTime)} / {fmt(duration)}
+          </span>
+        </div>
+        {/* Speed */}
+        <div className="flex gap-1">
+          {[1, 1.25, 1.5, 2].map((s) => (
+            <button
+              key={s}
+              onClick={() => changeSpeed(s)}
+              className={`px-2 py-1 rounded text-xs font-medium transition-colors ${speed === s ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            >
+              {s}x
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ScoreResult({ result }) {
   const { score, score_details } = result;
@@ -83,15 +195,6 @@ export default function CallPage() {
     });
   }, [id, managerName]);
 
-  function getAudioPlayer(url) {
-    if (!url) return null;
-    const driveMatch = url.match(/\/file\/d\/([^/?]+)/) || url.match(/[?&]id=([^&]+)/);
-    if (driveMatch) {
-      const id = driveMatch[1];
-      return { type: 'drive', src: `https://drive.google.com/file/d/${id}/preview` };
-    }
-    return { type: 'audio', src: url };
-  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -120,7 +223,6 @@ export default function CallPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400">Загрузка...</div>;
   if (!call || call.error) return <div className="min-h-screen flex items-center justify-center text-slate-400">Звонок не найден</div>;
 
-  const audioPlayer = getAudioPlayer(call.audio_url);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -137,22 +239,10 @@ export default function CallPage() {
         </div>
 
         {/* Audio player */}
-        {audioPlayer && (
+        {call.audio_url && (
           <div className="bg-white border border-slate-200 rounded-xl p-4 mb-6">
-            <p className="text-xs font-medium text-slate-500 mb-2">АУДИОЗАПИСЬ</p>
-            {audioPlayer.type === 'drive' ? (
-              <iframe
-                src={audioPlayer.src}
-                width="100%"
-                height="80"
-                allow="autoplay"
-                className="rounded-lg border-0"
-              />
-            ) : (
-              <audio controls className="w-full" src={audioPlayer.src}>
-                Браузер не поддерживает аудио.
-              </audio>
-            )}
+            <p className="text-xs font-medium text-slate-500 mb-3">АУДИОЗАПИСЬ</p>
+            <AudioPlayer url={call.audio_url} />
           </div>
         )}
 
