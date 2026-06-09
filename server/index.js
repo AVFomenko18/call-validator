@@ -83,6 +83,25 @@ app.post('/api/calls', requireAdmin, async (req, res) => {
   }
 });
 
+app.put('/api/calls/:id', requireAdmin, async (req, res) => {
+  const { title, audio_url, transcription, supervisor_feedback } = req.body;
+  if (!title || !transcription || !supervisor_feedback) {
+    return res.status(400).json({ error: 'title, transcription and supervisor_feedback required' });
+  }
+  try {
+    const key_moments = await extractKeyMoments(transcription);
+    const result = await pool.query(
+      `UPDATE calls SET title=$1, audio_url=$2, transcription=$3, supervisor_feedback=$4, key_moments=$5
+       WHERE id=$6 RETURNING *`,
+      [title, audio_url || null, transcription, supervisor_feedback, JSON.stringify(key_moments), req.params.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete('/api/calls/:id', requireAdmin, async (req, res) => {
   try {
     await pool.query('DELETE FROM calls WHERE id = $1', [req.params.id]);

@@ -67,13 +67,13 @@ function parseTranscriptionJSON(jsonText) {
   return data.text || '';
 }
 
-// ── New Call Form ─────────────────────────────────────────────────────────────
-function NewCallForm({ token, onCreated, onCancel }) {
+// ── Call Form (create + edit) ─────────────────────────────────────────────────
+function NewCallForm({ token, onCreated, onCancel, editCall }) {
   const [form, setForm] = useState({
-    title: '',
-    audio_url: '',
-    transcription: '',
-    supervisor_feedback: '',
+    title: editCall?.title || '',
+    audio_url: editCall?.audio_url || '',
+    transcription: editCall?.transcription || '',
+    supervisor_feedback: editCall?.supervisor_feedback || '',
   });
   const [transcriptionMode, setTranscriptionMode] = useState('text');
   const [jsonError, setJsonError] = useState('');
@@ -112,8 +112,9 @@ function NewCallForm({ token, onCreated, onCancel }) {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/calls', {
-        method: 'POST',
+      const url = editCall ? `/api/calls/${editCall.id}` : '/api/calls';
+      const res = await fetch(url, {
+        method: editCall ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
         body: JSON.stringify(form),
       });
@@ -130,7 +131,7 @@ function NewCallForm({ token, onCreated, onCancel }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-6 mb-6">
       <div className="flex items-center justify-between mb-5">
-        <h2 className="font-semibold text-slate-900">Новый звонок</h2>
+        <h2 className="font-semibold text-slate-900">{editCall ? 'Редактировать звонок' : 'Новый звонок'}</h2>
         <button onClick={onCancel} className="text-slate-400 hover:text-slate-700 text-lg leading-none">✕</button>
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -210,7 +211,7 @@ function NewCallForm({ token, onCreated, onCancel }) {
             disabled={loading}
             className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? 'Создаём (Claude извлекает ключевые моменты)...' : 'Создать звонок'}
+            {loading ? 'Сохраняем (Claude обновляет ключевые моменты)...' : editCall ? 'Сохранить изменения' : 'Создать звонок'}
           </button>
         </div>
       </form>
@@ -283,6 +284,7 @@ export default function Admin() {
   const [calls, setCalls] = useState([]);
   const [summary, setSummary] = useState([]);
   const [showNewCall, setShowNewCall] = useState(false);
+  const [editingCall, setEditingCall] = useState(null);
   const [selectedSub, setSelectedSub] = useState(null);
   const [loadingDelete, setLoadingDelete] = useState(null);
 
@@ -424,7 +426,17 @@ export default function Admin() {
         {/* Calls tab */}
         {tab === 'calls' && (
           <div>
-            {showNewCall ? (
+            {editingCall ? (
+              <NewCallForm
+                token={token}
+                editCall={editingCall}
+                onCreated={(c) => {
+                  setCalls((prev) => prev.map((x) => x.id === c.id ? c : x));
+                  setEditingCall(null);
+                }}
+                onCancel={() => setEditingCall(null)}
+              />
+            ) : showNewCall ? (
               <NewCallForm
                 token={token}
                 onCreated={(c) => { setCalls((prev) => [c, ...prev]); setShowNewCall(false); }}
@@ -450,13 +462,26 @@ export default function Admin() {
                         {new Date(call.created_at).toLocaleDateString('ru-RU')} · {subCount} ответов
                       </p>
                     </div>
-                    <button
-                      onClick={() => deleteCall(call.id)}
-                      disabled={loadingDelete === call.id}
-                      className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40 px-2 py-1 rounded hover:bg-red-50"
-                    >
-                      Удалить
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          const res = await fetch(`/api/calls/${call.id}`, { headers: { 'x-admin-token': token } });
+                          const full = await res.json();
+                          setEditingCall(full);
+                          setShowNewCall(false);
+                        }}
+                        className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50"
+                      >
+                        Изменить
+                      </button>
+                      <button
+                        onClick={() => deleteCall(call.id)}
+                        disabled={loadingDelete === call.id}
+                        className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40 px-2 py-1 rounded hover:bg-red-50"
+                      >
+                        Удалить
+                      </button>
+                    </div>
                   </div>
                 );
               })}
