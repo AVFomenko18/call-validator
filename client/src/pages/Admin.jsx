@@ -42,6 +42,31 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+// ── JSON parser ──────────────────────────────────────────────────────────────
+function parseTranscriptionJSON(jsonText) {
+  const data = JSON.parse(jsonText);
+  if (data.speakers && data.speakers.length) {
+    const speakerMap = {};
+    // Determine speaker labels: first speaker = Менеджер, second = Клиент
+    data.speakers.forEach((s) => {
+      if (!speakerMap[s.speaker]) {
+        const idx = Object.keys(speakerMap).length;
+        speakerMap[s.speaker] = idx === 0 ? 'Менеджер' : 'Клиент';
+      }
+    });
+    return data.speakers
+      .map((s) => {
+        const mins = Math.floor(s.start / 60);
+        const secs = Math.floor(s.start % 60);
+        const time = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        const label = speakerMap[s.speaker];
+        return `[${time}] ${label}: ${s.text.trim()}`;
+      })
+      .join('\n\n');
+  }
+  return data.text || '';
+}
+
 // ── New Call Form ─────────────────────────────────────────────────────────────
 function NewCallForm({ token, onCreated, onCancel }) {
   const [form, setForm] = useState({
@@ -50,11 +75,32 @@ function NewCallForm({ token, onCreated, onCancel }) {
     transcription: '',
     supervisor_feedback: '',
   });
+  const [transcriptionMode, setTranscriptionMode] = useState('text');
+  const [jsonError, setJsonError] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   function set(field, val) {
     setForm((f) => ({ ...f, [field]: val }));
+  }
+
+  function handleFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => applyJSON(ev.target.result);
+    reader.readAsText(file);
+  }
+
+  function applyJSON(text) {
+    setJsonError('');
+    try {
+      const transcript = parseTranscriptionJSON(text);
+      set('transcription', transcript);
+      setTranscriptionMode('text');
+    } catch {
+      setJsonError('Не удалось разобрать JSON. Проверь формат файла.');
+    }
   }
 
   async function handleSubmit(e) {
@@ -108,7 +154,33 @@ function NewCallForm({ token, onCreated, onCancel }) {
           <p className="text-xs text-slate-400 mt-1">Google Drive: файл должен быть с доступом "Всем по ссылке"</p>
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Транскрипция звонка *</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-xs font-medium text-slate-600">Транскрипция звонка *</label>
+            <div className="flex gap-1 bg-slate-100 rounded-md p-0.5">
+              {['text', 'json'].map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setTranscriptionMode(mode)}
+                  className={`px-2.5 py-0.5 rounded text-xs font-medium transition-colors ${transcriptionMode === mode ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  {mode === 'text' ? 'Текст' : 'JSON файл'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {transcriptionMode === 'json' ? (
+            <div className="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center">
+              <p className="text-sm text-slate-500 mb-3">Загрузи JSON файл транскрипции</p>
+              <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+                Выбрать файл
+                <input type="file" accept=".json" className="hidden" onChange={handleFileUpload} />
+              </label>
+              <p className="text-xs text-slate-400 mt-2">Поддерживается формат с полями speakers[] + text</p>
+              {jsonError && <p className="text-xs text-red-600 mt-2">{jsonError}</p>}
+            </div>
+          ) : (
           <textarea
             rows={6}
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -116,6 +188,10 @@ function NewCallForm({ token, onCreated, onCancel }) {
             value={form.transcription}
             onChange={(e) => set('transcription', e.target.value)}
           />
+          )}
+          {transcriptionMode === 'text' && form.transcription && (
+            <p className="text-xs text-green-600 mt-1">✓ {form.transcription.split('\n\n').length} реплик загружено</p>
+          )}
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">Обратная связь руководителя (эталон) *</label>
