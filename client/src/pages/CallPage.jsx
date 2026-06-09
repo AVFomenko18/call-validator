@@ -18,15 +18,7 @@ function AudioPlayer({ url }) {
   useEffect(() => {
     if (!url || isGoogleDrive) return;
     if (isYandex) {
-      setResolving(true);
-      fetch(`/api/resolve-audio?url=${encodeURIComponent(url)}`)
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.url) setResolvedUrl(d.url);
-          else setAudioError(d.error || 'Не удалось загрузить аудио');
-        })
-        .catch((e) => setAudioError(e.message))
-        .finally(() => setResolving(false));
+      setResolvedUrl(`/api/audio-proxy?url=${encodeURIComponent(url)}`);
     } else {
       setResolvedUrl(url);
     }

@@ -25,28 +25,35 @@ function requireAdmin(req, res, next) {
 
 // ── Calls ────────────────────────────────────────────────────────────────────
 
-// Resolve Yandex Disk share link to direct audio URL
-app.get('/api/resolve-audio', async (req, res) => {
+// Proxy audio through server (avoids CORS/IP issues with Yandex Disk)
+app.get('/api/audio-proxy', async (req, res) => {
   const { url } = req.query;
-  if (!url) return res.status(400).json({ error: 'url required' });
+  if (!url) return res.status(400).send('url required');
 
   try {
+    let directUrl = url;
+
     if (url.includes('yandex.') || url.includes('yadi.sk')) {
       const apiUrl = `https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=${encodeURIComponent(url)}`;
-      console.log('[resolve-audio] Calling Yandex API:', apiUrl);
       const r = await fetch(apiUrl);
       const data = await r.json();
-      console.log('[resolve-audio] Yandex API response:', JSON.stringify(data));
-      if (data.href) {
-        const streamUrl = data.href.replace('disposition=attachment', 'disposition=inline');
-        return res.json({ url: streamUrl });
-      }
-      return res.status(400).json({ error: data.message || 'Cannot resolve Yandex Disk link', raw: data });
+      if (!data.href) return res.status(400).send(data.message || 'Cannot resolve Yandex Disk link');
+      directUrl = data.href;
     }
-    res.json({ url });
+
+    const audioRes = await fetch(directUrl);
+    if (!audioRes.ok) return res.status(audioRes.status).send('Failed to fetch audio');
+
+    res.setHeader('Content-Type', audioRes.headers.get('content-type') || 'audio/mpeg');
+    res.setHeader('Accept-Ranges', 'bytes');
+    const contentLength = audioRes.headers.get('content-length');
+    if (contentLength) res.setHeader('Content-Length', contentLength);
+
+    const { Readable } = await import('stream');
+    Readable.fromWeb(audioRes.body).pipe(res);
   } catch (err) {
-    console.error('[resolve-audio] Error:', err.message);
-    res.status(500).json({ error: err.message });
+    console.error('[audio-proxy] Error:', err.message);
+    res.status(500).send(err.message);
   }
 });
 
