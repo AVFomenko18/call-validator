@@ -147,11 +147,11 @@ function NewCallForm({ token, onCreated, onCancel }) {
           <label className="block text-xs font-medium text-slate-600 mb-1">Ссылка на аудио</label>
           <input
             className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="https://drive.google.com/file/d/... или прямая ссылка на mp3"
+            placeholder="https://disk.yandex.ru/i/... или прямая ссылка на mp3"
             value={form.audio_url}
             onChange={(e) => set('audio_url', e.target.value)}
           />
-          <p className="text-xs text-slate-400 mt-1">Google Drive: файл должен быть с доступом "Всем по ссылке"</p>
+          <p className="text-xs text-slate-400 mt-1">Яндекс Диск: файл должен быть с доступом "Всем по ссылке"</p>
         </div>
         <div>
           <div className="flex items-center justify-between mb-1">

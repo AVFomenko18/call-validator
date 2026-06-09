@@ -8,31 +8,25 @@ function AudioPlayer({ url }) {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [resolvedUrl, setResolvedUrl] = useState(null);
+  const [resolving, setResolving] = useState(false);
 
-  const driveMatch = url.match(/\/file\/d\/([^/?]+)/) || url.match(/[?&]id=([^&]+)/);
+  useEffect(() => {
+    if (!url) return;
+    if (url.includes('yandex.') || url.includes('yadi.sk') || url.includes('drive.google.')) {
+      setResolving(true);
+      fetch(`/api/resolve-audio?url=${encodeURIComponent(url)}`)
+        .then((r) => r.json())
+        .then((d) => { setResolvedUrl(d.url || url); })
+        .catch(() => setResolvedUrl(url))
+        .finally(() => setResolving(false));
+    } else {
+      setResolvedUrl(url);
+    }
+  }, [url]);
 
-  if (driveMatch) {
-    const driveId = driveMatch[1];
-    return (
-      <div>
-        <iframe
-          src={`https://drive.google.com/file/d/${driveId}/preview`}
-          width="100%"
-          height="120"
-          allow="autoplay"
-          className="rounded-lg border-0 block"
-        />
-        <a
-          href={`https://drive.google.com/file/d/${driveId}/view`}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 inline-flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600"
-        >
-          Открыть в Google Drive (там можно менять скорость) ↗
-        </a>
-      </div>
-    );
-  }
+  if (resolving) return <p className="text-sm text-slate-400">Загрузка аудио...</p>;
+  if (!resolvedUrl) return null;
 
   function fmt(s) {
     const m = Math.floor(s / 60);
@@ -71,7 +65,7 @@ function AudioPlayer({ url }) {
     <div className="space-y-3">
       <audio
         ref={audioRef}
-        src={url}
+        src={resolvedUrl}
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
         onEnded={() => setPlaying(false)}

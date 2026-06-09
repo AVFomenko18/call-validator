@@ -25,6 +25,25 @@ function requireAdmin(req, res, next) {
 
 // ── Calls ────────────────────────────────────────────────────────────────────
 
+// Resolve Yandex Disk share link to direct audio URL
+app.get('/api/resolve-audio', async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).json({ error: 'url required' });
+
+  try {
+    if (url.includes('yandex.') || url.includes('yadi.sk')) {
+      const apiUrl = `https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=${encodeURIComponent(url)}`;
+      const r = await fetch(apiUrl);
+      const data = await r.json();
+      if (data.href) return res.json({ url: data.href });
+      return res.status(400).json({ error: 'Cannot resolve Yandex Disk link' });
+    }
+    res.json({ url });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/calls', async (req, res) => {
   try {
     const result = await pool.query(
