@@ -83,12 +83,14 @@ export default function CallPage() {
     });
   }, [id, managerName]);
 
-  function getAudioUrl(url) {
+  function getAudioPlayer(url) {
     if (!url) return null;
-    // Convert Google Drive share link to direct
-    const match = url.match(/\/file\/d\/([^/]+)/);
-    if (match) return `https://drive.google.com/uc?export=download&id=${match[1]}`;
-    return url;
+    const driveMatch = url.match(/\/file\/d\/([^/?]+)/) || url.match(/[?&]id=([^&]+)/);
+    if (driveMatch) {
+      const id = driveMatch[1];
+      return { type: 'drive', src: `https://drive.google.com/file/d/${id}/preview` };
+    }
+    return { type: 'audio', src: url };
   }
 
   async function handleSubmit(e) {
@@ -118,7 +120,7 @@ export default function CallPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400">Загрузка...</div>;
   if (!call || call.error) return <div className="min-h-screen flex items-center justify-center text-slate-400">Звонок не найден</div>;
 
-  const audioUrl = getAudioUrl(call.audio_url);
+  const audioPlayer = getAudioPlayer(call.audio_url);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -135,12 +137,22 @@ export default function CallPage() {
         </div>
 
         {/* Audio player */}
-        {audioUrl && (
+        {audioPlayer && (
           <div className="bg-white border border-slate-200 rounded-xl p-4 mb-6">
             <p className="text-xs font-medium text-slate-500 mb-2">АУДИОЗАПИСЬ</p>
-            <audio controls className="w-full" src={audioUrl}>
-              Браузер не поддерживает аудио.
-            </audio>
+            {audioPlayer.type === 'drive' ? (
+              <iframe
+                src={audioPlayer.src}
+                width="100%"
+                height="80"
+                allow="autoplay"
+                className="rounded-lg border-0"
+              />
+            ) : (
+              <audio controls className="w-full" src={audioPlayer.src}>
+                Браузер не поддерживает аудио.
+              </audio>
+            )}
           </div>
         )}
 
