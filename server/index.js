@@ -37,7 +37,10 @@ app.get('/api/resolve-audio', async (req, res) => {
       const r = await fetch(apiUrl);
       const data = await r.json();
       console.log('[resolve-audio] Yandex API response:', JSON.stringify(data));
-      if (data.href) return res.json({ url: data.href });
+      if (data.href) {
+        const streamUrl = data.href.replace('disposition=attachment', 'disposition=inline');
+        return res.json({ url: streamUrl });
+      }
       return res.status(400).json({ error: data.message || 'Cannot resolve Yandex Disk link', raw: data });
     }
     res.json({ url });
