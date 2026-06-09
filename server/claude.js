@@ -6,11 +6,13 @@ export async function extractKeyMoments(transcription) {
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    system: {
-      type: 'text',
-      text: 'You are an expert sales coach analyzing call transcriptions. Return only valid JSON.',
-      cache_control: { type: 'ephemeral' },
-    },
+    system: [
+      {
+        type: 'text',
+        text: 'You are an expert sales coach analyzing call transcriptions. Return only valid JSON.',
+        cache_control: { type: 'ephemeral' },
+      },
+    ],
     messages: [
       {
         role: 'user',
@@ -59,6 +61,7 @@ export async function scoreSubmission(call, feedback) {
         cache_control: { type: 'ephemeral' },
       },
     ],
+
     messages: [
       {
         role: 'user',
