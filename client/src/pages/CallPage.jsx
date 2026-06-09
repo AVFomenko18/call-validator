@@ -11,19 +11,42 @@ function AudioPlayer({ url }) {
   const [resolvedUrl, setResolvedUrl] = useState(null);
   const [resolving, setResolving] = useState(false);
 
+  const isGoogleDrive = url && (url.includes('drive.google.') || url.includes('docs.google.'));
+  const isYandex = url && (url.includes('yandex.') || url.includes('yadi.sk'));
+
   useEffect(() => {
-    if (!url) return;
-    if (url.includes('yandex.') || url.includes('yadi.sk') || url.includes('drive.google.')) {
+    if (!url || isGoogleDrive) return;
+    if (isYandex) {
       setResolving(true);
       fetch(`/api/resolve-audio?url=${encodeURIComponent(url)}`)
         .then((r) => r.json())
-        .then((d) => { setResolvedUrl(d.url || url); })
+        .then((d) => setResolvedUrl(d.url || url))
         .catch(() => setResolvedUrl(url))
         .finally(() => setResolving(false));
     } else {
       setResolvedUrl(url);
     }
   }, [url]);
+
+  // Google Drive — iframe only
+  if (isGoogleDrive) {
+    const driveMatch = url.match(/\/file\/d\/([^/?]+)/) || url.match(/[?&]id=([^&]+)/);
+    const driveId = driveMatch?.[1];
+    if (!driveId) return <p className="text-sm text-red-400">Неверная ссылка Google Drive</p>;
+    return (
+      <div>
+        <iframe
+          src={`https://drive.google.com/file/d/${driveId}/preview`}
+          width="100%" height="120" allow="autoplay"
+          className="rounded-lg border-0 block"
+        />
+        <a href={`https://drive.google.com/file/d/${driveId}/view`} target="_blank" rel="noreferrer"
+          className="mt-2 inline-flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600">
+          Открыть в Google Drive (там есть управление скоростью) ↗
+        </a>
+      </div>
+    );
+  }
 
   if (resolving) return <p className="text-sm text-slate-400">Загрузка аудио...</p>;
   if (!resolvedUrl) return null;
