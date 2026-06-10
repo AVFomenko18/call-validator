@@ -39,7 +39,7 @@ export default function Home() {
     setEditing(false);
   }
 
-  const done = Object.keys(submissions).length;
+  const done = Object.values(submissions).filter((s) => s?.is_final).length;
   const total = calls.length;
 
   return (
@@ -113,6 +113,10 @@ export default function Home() {
           <div className="space-y-3">
             {calls.map((call) => {
               const sub = submissions[call.id];
+              const isFinal = sub?.is_final === true;
+              const hasAttempts = sub && sub.attempt_count > 0;
+              const score = sub?.best_score;
+
               return (
                 <button
                   key={call.id}
@@ -122,8 +126,12 @@ export default function Home() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${sub ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                        {sub ? '✓' : '▶'}
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                        isFinal ? 'bg-green-100 text-green-700' :
+                        hasAttempts ? 'bg-amber-100 text-amber-600' :
+                        'bg-slate-100 text-slate-500'
+                      }`}>
+                        {isFinal ? '✓' : hasAttempts ? '↻' : '▶'}
                       </div>
                       <div>
                         <p className="font-medium text-slate-900 text-sm">{call.title}</p>
@@ -132,13 +140,18 @@ export default function Home() {
                         </p>
                       </div>
                     </div>
-                    {sub && (
+                    {isFinal && (
                       <div className="text-right">
-                        <p className={`text-lg font-bold ${sub.score >= 70 ? 'text-green-600' : sub.score >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
-                          {sub.score}
+                        <p className={`text-lg font-bold ${score >= 70 ? 'text-green-600' : score >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
+                          {score}
                         </p>
                         <p className="text-xs text-slate-400">баллов</p>
                       </div>
+                    )}
+                    {hasAttempts && !isFinal && (
+                      <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-1 rounded-full">
+                        попытка {sub.attempt_count}
+                      </span>
                     )}
                     {!sub && (
                       <span className="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-full">не сдан</span>
