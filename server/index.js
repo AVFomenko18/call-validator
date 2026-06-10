@@ -237,6 +237,18 @@ app.post('/api/submissions/:id/finish', async (req, res) => {
   }
 });
 
+// Admin: delete all submissions for a manager+call (reset)
+app.delete('/api/submissions/reset', requireAdmin, async (req, res) => {
+  const { call_id, manager_name } = req.query;
+  if (!call_id || !manager_name) return res.status(400).json({ error: 'call_id and manager_name required' });
+  try {
+    await pool.query('DELETE FROM submissions WHERE call_id=$1 AND manager_name=$2', [call_id, manager_name]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete('/api/submissions/:id', requireAdmin, async (req, res) => {
   try {
     await pool.query('DELETE FROM submissions WHERE id = $1', [req.params.id]);

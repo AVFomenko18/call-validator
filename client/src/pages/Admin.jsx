@@ -220,10 +220,19 @@ function NewCallForm({ token, onCreated, onCancel, editCall }) {
 }
 
 // ── Submission Detail Modal ───────────────────────────────────────────────────
-function SubmissionModal({ sub, onClose }) {
+function SubmissionModal({ sub, token, onClose, onDelete }) {
   if (!sub) return null;
   const details = typeof sub.score_details === 'string' ? JSON.parse(sub.score_details) : sub.score_details;
   const color = sub.score >= 70 ? 'text-green-600' : sub.score >= 40 ? 'text-yellow-600' : 'text-red-600';
+
+  async function handleDelete() {
+    if (!confirm(`Удалить все результаты «${sub.manager_name}» по звонку «${sub.call_title}»?`)) return;
+    await fetch(
+      `/api/submissions/reset?call_id=${sub.call_id}&manager_name=${encodeURIComponent(sub.manager_name)}`,
+      { method: 'DELETE', headers: { 'x-admin-token': token } }
+    );
+    onDelete();
+  }
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -268,9 +277,17 @@ function SubmissionModal({ sub, onClose }) {
           )}
         </div>
 
-        <button onClick={onClose} className="mt-5 w-full border border-slate-200 rounded-lg py-2 text-sm text-slate-600 hover:bg-slate-50">
-          Закрыть
-        </button>
+        <div className="mt-5 flex gap-2">
+          <button
+            onClick={handleDelete}
+            className="flex-1 border border-red-200 text-red-600 rounded-lg py-2 text-sm hover:bg-red-50 transition-colors"
+          >
+            Удалить результат
+          </button>
+          <button onClick={onClose} className="flex-1 border border-slate-200 rounded-lg py-2 text-sm text-slate-600 hover:bg-slate-50">
+            Закрыть
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -496,7 +513,12 @@ export default function Admin() {
         )}
       </div>
 
-      <SubmissionModal sub={selectedSub} onClose={() => setSelectedSub(null)} />
+      <SubmissionModal
+        sub={selectedSub}
+        token={token}
+        onClose={() => setSelectedSub(null)}
+        onDelete={() => { setSelectedSub(null); loadData(); }}
+      />
     </div>
   );
 }
