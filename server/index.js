@@ -126,26 +126,40 @@ app.delete('/api/calls/:id', requireAdmin, async (req, res) => {
 
 // ── Submissions ──────────────────────────────────────────────────────────────
 
-// Manager: check own submission
+// Manager: check own attempts for a call
 app.get('/api/submissions/check', async (req, res) => {
   const { call_id, manager_name } = req.query;
   try {
     const result = await pool.query(
-      'SELECT id, score, score_details, created_at FROM submissions WHERE call_id=$1 AND manager_name=$2',
+      `SELECT id, attempt_number, score, score_details, is_final, created_at
+       FROM submissions WHERE call_id=$1 AND manager_name=$2
+       ORDER BY attempt_number DESC`,
       [call_id, manager_name]
     );
-    res.json(result.rows[0] || null);
+    if (!result.rows.length) return res.json(null);
+    const rows = result.rows;
+    res.json({
+      attempt_count: rows.length,
+      is_final: rows.some((r) => r.is_final),
+      best_score: Math.max(...rows.map((r) => r.score || 0)),
+      latest: rows[0],
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Admin: summary table managers × calls
+// Admin: summary table managers × calls (best score + completion status)
 app.get('/api/submissions/summary', requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT s.manager_name, s.call_id, c.title AS call_title, s.score
+      SELECT
+        s.manager_name, s.call_id, c.title AS call_title,
+        MAX(s.score) AS score,
+        BOOL_OR(s.is_final) AS completed,
+        COUNT(*)::int AS attempt_count
       FROM submissions s JOIN calls c ON s.call_id = c.id
+      GROUP BY s.manager_name, s.call_id, c.title
       ORDER BY s.manager_name, s.call_id
     `);
     res.json(result.rows);
@@ -175,30 +189,49 @@ app.get('/api/submissions', requireAdmin, async (req, res) => {
   }
 });
 
-// Manager: submit feedback
+// Manager: submit feedback (allows multiple attempts until is_final)
 app.post('/api/submissions', async (req, res) => {
   const { call_id, manager_name, strengths, weaknesses } = req.body;
   if (!call_id || !manager_name || !strengths || !weaknesses) {
     return res.status(400).json({ error: 'All fields required' });
   }
   try {
-    const existing = await pool.query(
-      'SELECT id FROM submissions WHERE call_id=$1 AND manager_name=$2',
+    const finalCheck = await pool.query(
+      'SELECT id FROM submissions WHERE call_id=$1 AND manager_name=$2 AND is_final=true',
       [call_id, manager_name]
     );
-    if (existing.rows.length) {
-      return res.status(409).json({ error: 'Already submitted' });
+    if (finalCheck.rows.length) {
+      return res.status(409).json({ error: 'Training already completed' });
     }
+
+    const countResult = await pool.query(
+      'SELECT COUNT(*) FROM submissions WHERE call_id=$1 AND manager_name=$2',
+      [call_id, manager_name]
+    );
+    const attempt_number = parseInt(countResult.rows[0].count) + 1;
+
     const callResult = await pool.query('SELECT * FROM calls WHERE id = $1', [call_id]);
     if (!callResult.rows.length) return res.status(404).json({ error: 'Call not found' });
 
     const { score, score_details } = await scoreSubmission(callResult.rows[0], { strengths, weaknesses });
     const result = await pool.query(
-      `INSERT INTO submissions (call_id, manager_name, strengths, weaknesses, score, score_details)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [call_id, manager_name, strengths, weaknesses, score, JSON.stringify(score_details)]
+      `INSERT INTO submissions (call_id, manager_name, strengths, weaknesses, score, score_details, attempt_number)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [call_id, manager_name, strengths, weaknesses, score, JSON.stringify(score_details), attempt_number]
     );
     res.status(201).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Manager: mark submission as final (training complete)
+app.post('/api/submissions/:id/finish', async (req, res) => {
+  try {
+    const sub = await pool.query('SELECT id FROM submissions WHERE id=$1', [req.params.id]);
+    if (!sub.rows.length) return res.status(404).json({ error: 'Not found' });
+    await pool.query('UPDATE submissions SET is_final=true WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

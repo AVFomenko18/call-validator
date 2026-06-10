@@ -325,9 +325,11 @@ export default function Admin() {
   // Build stats table
   const managers = [...new Set(summary.map((s) => s.manager_name))].sort();
   const scoreMap = {};
+  const completedMap = {};
   summary.forEach((s) => {
-    if (!scoreMap[s.manager_name]) scoreMap[s.manager_name] = {};
+    if (!scoreMap[s.manager_name]) { scoreMap[s.manager_name] = {}; completedMap[s.manager_name] = {}; }
     scoreMap[s.manager_name][s.call_id] = s.score;
+    completedMap[s.manager_name][s.call_id] = s.completed;
   });
 
   function avgScore(manager) {
@@ -393,13 +395,14 @@ export default function Admin() {
                               {score !== undefined ? (
                                 <button
                                   onClick={() => openSubmission(c.id, manager)}
-                                  className={`inline-block px-2 py-0.5 rounded-md text-xs font-bold cursor-pointer hover:opacity-80 ${
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold cursor-pointer hover:opacity-80 ${
                                     score >= 70 ? 'bg-green-100 text-green-700' :
                                     score >= 40 ? 'bg-yellow-100 text-yellow-700' :
                                     'bg-red-100 text-red-700'
                                   }`}
                                 >
                                   {score}
+                                  {completedMap[manager]?.[c.id] && <span title="Завершено">✓</span>}
                                 </button>
                               ) : (
                                 <span className="text-slate-300 text-xs">—</span>

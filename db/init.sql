@@ -16,8 +16,7 @@ CREATE TABLE IF NOT EXISTS submissions (
   weaknesses TEXT NOT NULL,
   score INTEGER,
   score_details JSONB DEFAULT '{}',
+  attempt_number INT DEFAULT 1,
+  is_final BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
-CREATE UNIQUE INDEX IF NOT EXISTS unique_manager_call
-  ON submissions (call_id, manager_name);
