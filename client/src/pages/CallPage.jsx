@@ -224,6 +224,7 @@ function CardGame({ scoreDetails, attemptNumber, submissionId, onRetry, onFinish
   const [showMissed, setShowMissed] = useState(false);
   const [showContent, setShowContent] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const [allRevealed, setAllRevealed] = useState(false);
 
   useEffect(() => {
     setRevealedIndices(new Set());
@@ -274,7 +275,7 @@ function CardGame({ scoreDetails, attemptNumber, submissionId, onRetry, onFinish
       return;
     }
 
-    setTimeout(() => onFinish(), totalRevealTime);
+    setTimeout(() => setAllRevealed(true), totalRevealTime);
   }
 
   return (
@@ -322,7 +323,15 @@ function CardGame({ scoreDetails, attemptNumber, submissionId, onRetry, onFinish
           style={{ animation: 'fadeInUp 0.5s ease-out both' }}
         >
           <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-          {canFinish ? (
+          {allRevealed ? (
+            <button
+              onClick={onFinish}
+              className="w-full py-4 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+              style={{ animation: 'fadeInUp 0.5s ease-out both' }}
+            >
+              🎉 Перейти к результату →
+            </button>
+          ) : canFinish ? (
             <>
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
                 <p className="text-emerald-700 text-sm font-medium">
