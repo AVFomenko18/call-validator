@@ -407,20 +407,22 @@ export default function Admin() {
                         <td className="px-4 py-3 font-medium text-slate-800">{manager}</td>
                         {calls.map((c) => {
                           const score = scoreMap[manager]?.[c.id];
+                          const completed = completedMap[manager]?.[c.id];
                           return (
-                            <td key={c.id} className="px-3 py-3 text-center">
+                            <td
+                              key={c.id}
+                              onClick={() => score !== undefined && openSubmission(c.id, manager)}
+                              className={`px-3 py-3 text-center ${score !== undefined ? 'cursor-pointer hover:bg-slate-100 transition-colors' : ''}`}
+                            >
                               {score !== undefined ? (
-                                <button
-                                  onClick={() => openSubmission(c.id, manager)}
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold cursor-pointer hover:opacity-80 ${
-                                    score >= 70 ? 'bg-green-100 text-green-700' :
-                                    score >= 40 ? 'bg-yellow-100 text-yellow-700' :
-                                    'bg-red-100 text-red-700'
-                                  }`}
-                                >
+                                <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold w-full justify-center ${
+                                  score >= 70 ? 'bg-green-100 text-green-700' :
+                                  score >= 40 ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
                                   {score}
-                                  {completedMap[manager]?.[c.id] && <span title="Завершено">✓</span>}
-                                </button>
+                                  {completed && <span title="Завершено">✓</span>}
+                                </div>
                               ) : (
                                 <span className="text-slate-300 text-xs">—</span>
                               )}
