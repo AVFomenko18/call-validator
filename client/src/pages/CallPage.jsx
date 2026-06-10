@@ -129,10 +129,10 @@ function AudioPlayer({ url }) {
 
 // ─── FlipCard ────────────────────────────────────────────────────────────────
 
-function FlipCard({ card, isRevealed, showMissed }) {
+function FlipCard({ card, isRevealed, showMissed, revealMissed }) {
   const isOpen = card.type === 'matched';
-  const flipped = isOpen && isRevealed;
-  const missedState = card.type === 'missed' && showMissed;
+  const flipped = (isOpen && isRevealed) || (!isOpen && revealMissed);
+  const missedFront = card.type === 'missed' && showMissed && !revealMissed;
 
   return (
     <div style={{ perspective: '800px' }} className="h-32">
@@ -146,16 +146,14 @@ function FlipCard({ card, isRevealed, showMissed }) {
           transition: 'transform 0.65s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        {/* Front face — locked / missed */}
+        {/* Front face */}
         <div
           style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
           className={`absolute inset-0 rounded-xl flex flex-col items-center justify-center border transition-colors duration-500 ${
-            missedState
-              ? 'bg-rose-950 border-rose-800'
-              : 'bg-slate-800 border-slate-700'
+            missedFront ? 'bg-rose-950 border-rose-800' : 'bg-slate-800 border-slate-700'
           }`}
         >
-          {missedState ? (
+          {missedFront ? (
             <>
               <span className="text-xl text-rose-400">✗</span>
               <span className="text-xs text-rose-500 mt-1 font-medium">пропущено</span>
@@ -165,17 +163,23 @@ function FlipCard({ card, isRevealed, showMissed }) {
           )}
         </div>
 
-        {/* Back face — matched / revealed */}
+        {/* Back face — matched (green) or missed reveal (red) */}
         <div
           style={{
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
           }}
-          className="absolute inset-0 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-3 flex flex-col shadow-md"
+          className={`absolute inset-0 rounded-xl p-3 flex flex-col shadow-md ${
+            isOpen
+              ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
+              : 'bg-gradient-to-br from-rose-600 to-rose-800'
+          }`}
         >
-          <span className="text-emerald-100 text-xs font-bold mb-1.5">✓ Верно замечено</span>
-          <p className="text-white text-xs leading-snug overflow-hidden" style={{
+          <span className="text-white/80 text-xs font-bold mb-1.5">
+            {isOpen ? '✓ Верно замечено' : '✗ Пропущено'}
+          </span>
+          <p className="text-white text-xs leading-snug" style={{
             display: '-webkit-box',
             WebkitLineClamp: 5,
             WebkitBoxOrient: 'vertical',
@@ -216,6 +220,7 @@ function CardGame({ scoreDetails, attemptNumber, submissionId, onRetry, onFinish
   }, [scoreDetails]);
 
   const [revealedIndices, setRevealedIndices] = useState(new Set());
+  const [revealMissedIndices, setRevealMissedIndices] = useState(new Set());
   const [showMissed, setShowMissed] = useState(false);
   const [showContent, setShowContent] = useState(false);
   const [finishing, setFinishing] = useState(false);
@@ -246,12 +251,30 @@ function CardGame({ scoreDetails, attemptNumber, submissionId, onRetry, onFinish
 
   async function handleFinish() {
     setFinishing(true);
+
+    // Flip all missed cards one by one, then navigate
+    const missedWithIndex = cards.map((c, i) => ({ ...c, i })).filter((c) => c.type === 'missed');
+    let delay = 0;
+    const timeouts = [];
+    missedWithIndex.forEach(({ i }) => {
+      const t = setTimeout(() => {
+        setRevealMissedIndices((prev) => new Set([...prev, i]));
+      }, delay);
+      timeouts.push(t);
+      delay += 160;
+    });
+
+    const totalRevealTime = delay + 700;
+
     try {
       await fetch(`/api/submissions/${submissionId}/finish`, { method: 'POST' });
-      onFinish();
     } catch {
+      timeouts.forEach(clearTimeout);
       setFinishing(false);
+      return;
     }
+
+    setTimeout(() => onFinish(), totalRevealTime);
   }
 
   return (
@@ -287,6 +310,7 @@ function CardGame({ scoreDetails, attemptNumber, submissionId, onRetry, onFinish
             card={card}
             isRevealed={revealedIndices.has(i)}
             showMissed={showMissed}
+            revealMissed={revealMissedIndices.has(i)}
           />
         ))}
       </div>
@@ -317,7 +341,7 @@ function CardGame({ scoreDetails, attemptNumber, submissionId, onRetry, onFinish
                   disabled={finishing}
                   className="py-3 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors shadow-sm"
                 >
-                  {finishing ? 'Сохраняем...' : '✅ Завершить'}
+                  {finishing ? 'Открываем карточки...' : '✅ Завершить и показать все'}
                 </button>
               </div>
             </>
