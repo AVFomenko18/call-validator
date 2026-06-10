@@ -462,7 +462,8 @@ export default function CallPage() {
       fetch(`/api/submissions/check?call_id=${id}&manager_name=${encodeURIComponent(managerName)}`).then((r) => r.json()),
     ]).then(([callData, checkData]) => {
       setCall(callData);
-      if (!checkData) {
+      const validCheck = checkData && !checkData.error && checkData.attempt_count > 0;
+      if (!validCheck) {
         setPhase('form');
       } else if (checkData.is_final) {
         setPhase('completed');
