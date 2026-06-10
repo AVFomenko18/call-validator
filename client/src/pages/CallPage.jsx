@@ -291,14 +291,6 @@ function CardGame({ scoreDetails, attemptNumber, submissionId, onRetry, onFinish
         ))}
       </div>
 
-      {/* Reasoning */}
-      {showContent && details?.reasoning && (
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-          <p className="text-xs text-slate-400 font-medium mb-1">Комментарий разбора:</p>
-          <p className="text-sm text-slate-700 leading-relaxed">{details.reasoning}</p>
-        </div>
-      )}
-
       {/* Action buttons */}
       {showContent && (
         <div
