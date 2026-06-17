@@ -74,11 +74,17 @@ Score 0-100. Criteria:
 Return JSON only:
 {
   "score": number,
-  "matched_points": ["things they correctly identified"],
-  "missed_points": ["important things they missed"],
+  "matched_points": ["short observation in Russian, 1 sentence, no meta-commentary"],
+  "missed_points": ["short observation in Russian, 1 sentence, no meta-commentary"],
   "generic_phrases": ["vague phrases that lost points"],
   "reasoning": "brief explanation in Russian"
-}`,
+}
+
+Rules for matched_points and missed_points:
+- Write in Russian
+- Each item is 1 short sentence describing WHAT was noticed or missed
+- NO phrases like "соответствует эталону", "совпадает с обратной связью", "золотой стандарт", "according to supervisor" or any similar meta-commentary
+- Just the observation itself, e.g. "Озвучены дедлайны, создаётся срочность" or "Не уточнил бюджет клиента"`,
       },
     ],
   });
